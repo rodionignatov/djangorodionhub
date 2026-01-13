@@ -1,4 +1,4 @@
-FROM python:3.11
+FROM python:3.13
 
 ENV PYTHONBUFFERED=1
 
@@ -11,4 +11,5 @@ RUN pip install -r requirements.txt
 
 COPY mysite .
 
-CMD ["gunicorn", "mysite.wsgi:applicaton", "--bind", "0.0.0.0:8000"]
+CMD ["gunicorn", "Django_Cache.mysite.wsgi:applicaton", "--bind", "0.0.0.0:8000"]
+

@@ -1,188 +1,139 @@
-"""
-В этом модуле лежат различные наборы представлений.
-
-Разные view интернет-магазинов: по товарам, заказам и т. д.
-"""
-
-from http.client import HTTPResponse
-from itertools import product
+from csv import DictWriter
 from timeit import default_timer
-
-from django.contrib.messages import success
+from django.utils.decorators import method_decorator
+from django.http import HttpResponse, HttpRequest, HttpResponseRedirect, JsonResponse
+from django.shortcuts import render, reverse
+from django.core.cache import cache
 from django.urls import reverse_lazy
-from django.views.generic import TemplateView, ListView, DetailView, CreateView, UpdateView, DeleteView
-from .forms import ProductForm
-from .models import Product, Oreder, ProductImage
+from django.views import View
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from rest_framework.parsers import MultiPartParser
+from rest_framework.request import Request
+from rest_framework.response import Response
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.viewsets import ModelViewSet
-from django.contrib.auth.models import Group
-from django.http import HttpResponse, HttpRequest, HttpResponseRedirect
-from django.shortcuts import render, redirect, reverse, get_object_or_404, reverse
-from django.template.context_processors import request
-from .models import Product
-from .forms import ProductForm, OrderForm
-from django.views import View
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin, UserPassesTestMixin
-from .forms import GroupForm
+from rest_framework.decorators import action
 from django_filters.rest_framework import DjangoFilterBackend
+from django.views.decorators.cache import cache_page
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import get_object_or_404
+from django.views.generic import ListView
+from django.http import JsonResponse, Http404
+from django.core.cache import cache
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+from .models import User, Order
+import json
+from datetime import datetime
+from .common import save_csv_products
+from .forms import ProductForm
+from .models import Product, Order, ProductImage
 from .serializers import ProductSerializer
-from drf_spectacular.utils import extend_schema, OpenApiResponse
 
 
-@extend_schema(description="Product view CRUD")
 class ProductViewSet(ModelViewSet):
-    """
-    Набор представлений для действий над Product
-    Полный CRUD для сущностей товара
-    """
-
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     filter_backends = [
         SearchFilter,
-#        DjangoFilterBackend,
-#        OrderingFilter,
-
+        DjangoFilterBackend,
+        OrderingFilter,
     ]
     search_fields = ["name", "description"]
     filterset_fields = [
         "name",
         "description",
-#        "price",
-#        "discount",
-#        "archived",
-
+        "price",
+        "discount",
+        "archived",
     ]
     ordering_fields = [
         "name",
         "price",
         "discount",
     ]
-    @extend_schema(
-        summary="Get one product by ID",
-        description="Retrieves **product**, returns 404 if not found",
-        responses={
-            200: ProductSerializer,
-            404: OpenApiResponse(description="Empty response, product by id not found"),
 
-        },
 
+    @method_decorator(cache_page(60 * 2))
+    def list(self, *args, **kwargs):
+        print("hello product list")
+        return super().list(*args, **kwargs)
+
+    @action(methods=["get"], detail=False)
+    def download_csv(self, request: Request):
+        response = HttpResponse(content_type="text/csv")
+        filename = "products-export.csv"
+        response["Content-Disposition"] = f"attachment; filename={filename}"
+        queryset = self.filter_queryset(self.get_queryset())
+        fields = [
+            "name",
+            "description",
+            "price",
+            "discount",
+        ]
+        queryset = queryset.only(*fields)
+        writer = DictWriter(response, fieldnames=fields)
+        writer.writeheader()
+
+        for product in queryset:
+            writer.writerow({
+                field: getattr(product, field)
+                for field in fields
+            })
+
+        return response
+
+    @action(
+        detail=False,
+        methods=["post"],
+        parser_classes=[MultiPartParser],
     )
-    def retrieve(self, *args, **kwargs):
-        return super().retrieve(*args, **kwargs)
-
-def create_order(request: HttpRequest)-> HttpResponse:
-    if request.method == "POST":
-        form = OrderForm(request.POST)
-        if form.is_valid():
-            form.save()
-            url = reverse("shopapp:orders_list")
-            return redirect(url)
-    else:
-        form = OrderForm()
-    context = {
-        "form": form,
-    }
-    url = reverse("shopapp:orders_list")
-    return render(request, "shopapp/orders.html", context=context)
-
-
-def create_product(request: HttpRequest) -> HttpResponse:
-    if request.method == "POST":
-        form = ProductForm(request.POST)
-        if form.is_valid():
-            #name = form.cleaned_data["name"]
-            #price = form.cleaned_data["price"]
-            #Product.objects.create(**form.cleaned_data)
-            form.save()
-            url = reverse("shopapp:products_list")
-            return redirect(url)
-    else:
-        form =  ProductForm()
-    context = {
-        "form": form,
-    }
-    url = reverse("shopapp:products_list")
-    return render(request, "shopapp/create-product.html", context=context)
-
+    def upload_csv(self, request: Request):
+        products = save_csv_products(
+            request.FILES["file"].file,
+            encoding=request.encoding,
+        )
+        serializer = self.get_serializer(products, many=True)
+        return Response(serializer.data)
 
 
 class ShopIndexView(View):
     def get(self, request: HttpRequest) -> HttpResponse:
         products = [
-            ('Laptop', 1488),
-            ('Desktop', 1999),
-            ('Iphone', 3000),
+            ('Laptop', 1999),
+            ('Desktop', 2999),
+            ('Smartphone', 999),
         ]
         context = {
-            'time_running': default_timer(),
-            'products': products,
-            'items': 5,
+            "time_running": default_timer(),
+            "products": products,
         }
+        print("shop index context", context)
         return render(request, 'shopapp/shop-index.html', context=context)
 
 
-
-
-
-class GroupsListView(View):
-    def get(self, request: HttpRequest) -> HttpResponse:
-        context = {
-            "form": GroupForm(),
-            "groups": Group.objects.prefetch_related('permissions').all(),
-        }
-        return render(request, 'shopapp/groups-list.html', context=context)
-
-    def post(self, request: HttpRequest):
-        form = GroupForm(request.POST)
-        if form.is_valid():
-            form.save()
-
-        return redirect(request.path)
-
-
-
 class ProductDetailsView(DetailView):
-    template_name = "shopapp/product-details.html"
+    template_name = "shopapp/products-details.html"
     queryset = Product.objects.prefetch_related("images")
-    model = Product
     context_object_name = "product"
 
 
-
-
-
 class ProductsListView(ListView):
-    template_name = 'shopapp/products-list.html'
-    model = Product
+    template_name = "shopapp/products-list.html"
     context_object_name = "products"
     queryset = Product.objects.filter(archived=False)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["products"] = Product.objects.all()
-        return context
 
-
-
-class ProductCreateView(CreateView, UserPassesTestMixin):
-    def test_func(self):
-        return self.request.user.is_superuser
-
+class ProductCreateView(CreateView):
     model = Product
     fields = "name", "price", "description", "discount", "preview"
-    success_url = reverse_lazy("shopapp:products-list")
-
-    def form_valid(self, form):
-        form.instance.created_by = self.request.user
-        return super().form_valid(form)
-
-
+    success_url = reverse_lazy("shopapp:products_list")
 
 
 class ProductUpdateView(UpdateView):
     model = Product
-    #fields = "name", "price", "description", "discount", "preview"
+    # fields = "name", "price", "description", "discount", "preview"
     template_name_suffix = "_update_form"
     form_class = ProductForm
 
@@ -191,6 +142,7 @@ class ProductUpdateView(UpdateView):
             "shopapp:product_details",
             kwargs={"pk": self.object.pk},
         )
+
     def form_valid(self, form):
         response = super().form_valid(form)
         for image in form.files.getlist("images"):
@@ -198,6 +150,7 @@ class ProductUpdateView(UpdateView):
                 product=self.object,
                 image=image,
             )
+
         return response
 
 
@@ -212,23 +165,96 @@ class ProductDeleteView(DeleteView):
         return HttpResponseRedirect(success_url)
 
 
-
-class OrdersListView(ListView, LoginRequiredMixin):
-    template_name = 'shopapp/orders_list.html'
+class OrdersListView(LoginRequiredMixin, ListView):
     queryset = (
-        Oreder.objects
+        Order.objects
         .select_related("user")
         .prefetch_related("products")
         .all()
     )
 
 
-class OrderDetailView(DetailView, PermissionRequiredMixin):
+class OrderDetailView(PermissionRequiredMixin, DetailView):
     permission_required = "shopapp.view_order"
-    template_name = 'shopapp/order_detail.html'
     queryset = (
-        Oreder.objects.select_related("user").prefetch_related("products")
+        Order.objects
+        .select_related("user")
+        .prefetch_related("products")
     )
 
 
+class ProductsDataExportView(View):
+    def get(self, request: HttpRequest) -> JsonResponse:
+        cache_key = "products.data_export"
+        products_data = cache.get(cache_key)
+        if products_data is None:
+            products = Product.objects.order_by('pk').all()
+            products_data = [
+                {
+                    "pk": product.pk,
+                    "name": product.name,
+                    "price": product.price,
+                    "archived": product.archived,
+                }
+                for product in products
+            ]
+            cache.ser(cache_key, products_data, 300)
+        return JsonResponse({"products": products_data})
 
+
+class UserOrdersListView(LoginRequiredMixin, ListView):
+    model = Order
+    template_name = 'shopapp/user_orders.html'
+    context_object_name = 'orders'
+
+    def get_queryset(self):
+        user_id = self.kwargs.get('user_id')
+        self.owner = get_object_or_404(User, id=user_id)
+        return Order.objects.filter(user=self.owner).order_by('pk')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['owner'] = self.owner
+        return context
+
+
+class UserOrdersExportView(LoginRequiredMixin, View):
+    def get(self, request, user_id):
+        cache_key = f'user_orders_export_{user_id}'
+
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return JsonResponse(cached_data, safe=False)
+
+        owner = get_object_or_404(User, id=user_id)
+
+        orders = Order.objects.filter(user=owner).order_by('pk')
+
+        orders_data = []
+        for order in orders:
+            order_data = {
+                'id': order.id,
+                'created_at': order.created_at.isoformat(),
+                'delivery_address': order.delivery_address,
+                'promocode': order.promocode,
+                'products': [
+                    {
+                        'id': product.id,
+                        'name': product.name,
+                        'price': str(product.price)
+                    } for product in order.products.all()
+                ]
+            }
+            orders_data.append(order_data)
+
+        result_data = {
+            'user_id': owner.id,
+            'username': owner.username,
+            'email': owner.email,
+            'orders': orders_data
+        }
+
+
+        cache.set(cache_key, result_data, 300)
+
+        return JsonResponse(result_data, safe=False)
