@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% load cache %}
+
+{% block title %}Заказы пользователя {{ owner.username }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>
+        {% if orders %}
+            Пользователь {{ owner.username }} выполнил следующие заказы:
+        {% else %}
+            У пользователя {{ owner.username }} ещё нет заказов
+        {% endif %}
+    </h1>
+
+    <div class="user-info">
+        <p><strong>Имя пользователя:</strong> {{ owner.username }}</p>
+        <p><strong>Email:</strong> {{ owner.email }}</p>
+        <p><strong>Дата регистрации:</strong> {{ owner.date_joined|date:"d.m.Y H:i" }}</p>
+    </div>
+
+    {% cache 300 orders_list owner.id %}
+    <div class="orders-list">
+        {% if orders %}
+            <div class="row">
+                {% for order in orders %}
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">Заказ #{{ order.id }}</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Дата создания:</strong> {{ order.created_at|date:"d.m.Y H:i" }}</p>
+                            <p><strong>Адрес доставки:</strong> {{ order.delivery_address }}</p>
+                            {% if order.promocode %}
+                            <p><strong>Промокод:</strong> {{ order.promocode }}</p>
+                            {% endif %}
+
+                            <h6>Товары:</h6>
+                            <ul>
+                                {% for product in order.products.all %}
+                                <li>{{ product.name }} - {{ product.price }} руб.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                У этого пользователя пока нет заказов.
+            </div>
+        {% endif %}
+    </div>
+    {% endcache %}
+
+    <div class="mt-4">
+        <a href="{% url 'user_orders_export' user_id=owner.id %}" class="btn btn-primary">
+            Экспортировать заказы в JSON
+        </a>
+        <a href="{% url 'home' %}" class="btn btn-secondary">На главную</a>
+    </div>
+</div>
+{% endblock %}

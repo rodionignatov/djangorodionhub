@@ -1,0 +1,26 @@
+{% extends 'shopapp/base.html' %}
+
+
+{% block title %}
+    Your orders
+{% endblock %}
+
+
+{% block body %}
+  <h1>Make new order</h1>
+  <div>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit">
+        Create Order
+      </button>
+    </form>
+  </div>
+
+  <div>
+    <a href="{% url 'shopapp:orders_list' %}">
+      Back to orders
+    </a>
+  </div>
+{% endblock %}

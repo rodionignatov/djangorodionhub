@@ -1,0 +1,27 @@
+{% extends 'myauth/base.html' %}
+
+
+{% block title %}
+    Register
+{% endblock %}
+
+
+{% block body %}
+  <h1>Register</h1>
+  <form method="post">
+    {% csrf_token %}
+    {% if perms.foo %}
+      <p>You have permission to do something in the foo app.</p>
+    {% if perms.foo.add_vote %}
+        <p>You can vote!</p>
+    {% endif %}
+    {% if perms.foo.add_driving %}
+        <p>You can drive!</p>
+    {% endif %}
+  {% else %}
+      <p>You don't have permission to do anything in the foo app.</p>
+  {% endif %}
+    {{ form.as_p }}
+    <input type="submit" value="Register">
+  </form>
+{% endblock %}

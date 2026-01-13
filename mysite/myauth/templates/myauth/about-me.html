@@ -1,0 +1,33 @@
+{% extends 'myauth/base.html' %}
+
+
+{% block title %}
+    About me
+{% endblock %}
+
+{% block body %}
+
+    {% if request.user.profile.avatar %}
+
+        <form method="post" enctype="multipart/form-data">
+            {% if profile.avatar  %}
+                <img src="{{ profile.avatar.url }}" alt="{{ profile.avatar.name }}">
+            {% endif %}
+        </form>
+        <h1>User info</h1>
+        {% if user.is_authenticated %}
+        <h2>Details</h2>
+        <p>Username: {{ user.username }}</p>
+        <p>Firstname: {{ user.firstname }}</p>
+        <p>Lastname: {{ user.lastname }}</p>
+        <p>E-mail: {{ user.email }}</p>
+        <p>Bio: {{ user.profile.bio }}</p>
+    {% endif %}
+
+
+
+    {% else %}
+    <h2>User is anonymous</h2>
+    {% endif %}
+
+{% endblock %}
