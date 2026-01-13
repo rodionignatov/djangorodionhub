@@ -11,5 +11,5 @@ RUN pip install -r requirements.txt
 
 COPY mysite .
 
-CMD ["gunicorn", "Django_Cache.mysite.wsgi:applicaton", "--bind", "0.0.0.0:8000"]
+CMD ["gunicorn", "mysite.wsgi:applicaton", "--bind", "0.0.0.0:8000"]
 

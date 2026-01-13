@@ -1,17 +1,16 @@
 from django import forms
-
-from shopapp.models import Product
-
+from .models import Product
 
 class ProductForm(forms.ModelForm):
     class Meta:
         model = Product
         fields = "name", "price", "description", "discount", "preview"
 
+    # Вариант 1: Без multiple
     images = forms.ImageField(
-        widget=forms.ClearableFileInput(attrs={"multiple": True}),
+        widget=forms.FileInput(),  # ← Просто FileInput без attrs
+        required=False,
     )
-
 
 class CSVImportForm(forms.Form):
     csv_file = forms.FileField()
