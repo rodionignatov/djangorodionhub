@@ -3,6 +3,7 @@
 services:
   app:
     build:
+      context: .
       dockerfile: ./Dockerfile
     command:
       - "gunicorn"
