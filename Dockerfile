@@ -1,15 +1,18 @@
 FROM python:3.13
 
-ENV PYTHONBUFFERED=1
+ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY requirements.txt requirements.txt
+RUN pip install --upgrade pip "poetry==2.3.2"
+RUN poetry config virtualenvs.create false --local
 
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+COPY pyproject.toml poetry.lock ./
 
-COPY mysite .
+RUN poetry install --no-root  # Добавлен флаг --no-root
 
-CMD ["gunicorn", "mysite.wsgi:applicaton", "--bind", "0.0.0.0:8000"]
+COPY mysite ./mysite
 
+
+
+CMD ["gunicorn", "mysite.wsgi:application", "--bind", "0.0.0.0:8000"]  # Исправлено: было applicaton
