@@ -9,7 +9,11 @@ requires-python = ">=3.12"
 dependencies = [
     "django (>=6.0.2,<7.0.0)",
     "django-rest-framework (>=0.1.0,<0.2.0)",
-    "djangorestframework (>=3.16.1,<4.0.0)"
+    "djangorestframework (>=3.16.1,<4.0.0)",
+    "django-filter (>=25.2,<26.0)",
+    "django-debug-toolbar (>=6.2.0,<7.0.0)",
+    "pillow (>=12.1.1,<13.0.0)",
+    "gunicorn (>=25.0.3,<26.0.0)"
 ]
 
 
