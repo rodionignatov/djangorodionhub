@@ -5,19 +5,19 @@ from django.contrib import admin
 from django.urls import path, include
 from django.contrib.sitemaps.views import sitemap
 
-from .sitemaps import sitemaps
+# from .sitemaps import sitemaps
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('shop/', include('shopapp.urls')),
     path('myauth/', include('myauth.urls')),
-    path('blog/', include('blogapp.urls')),
+#     path('blog/', include('blogapp.urls')),
 
-    path(
-        sitemap,
-        {"sitemaps": sitemaps},
-        name="django.contrib.sitemaps.views.sitemap",
-    )
+#     path(
+#        sitemap,
+#        {"sitemaps": sitemaps},
+#        name="django.contrib.sitemaps.views.sitemap",
+#    )
 ]
 
 if settings.DEBUG:

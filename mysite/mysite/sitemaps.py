@@ -1,5 +1,5 @@
-from blogapp.sitemap import BlogSitemap
+# from blogapp.sitemap import BlogSitemap
 
-sitemaps = {
-    "blog": BlogSitemap,
-}
+# sitemaps = {
+#     "blog": BlogSitemap,
+# }
